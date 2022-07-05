@@ -96,7 +96,10 @@ constraint forall(  i in tsamp  )(  pipe_storage_level[i] >= 0  );
 constraint forall(  i in tsamp  )(  pipe_storage_level[i] - pipe_storage_capa <= 0  );
 
 constraint forall(  i in tint  )(   el_hout[i] = el_pin[i]/3600* EL_ETA/ 39.4 );  %% high calorific value of H2 = 39.4 kWh/kg
-%constraint forall(  i in tint  )(   ug_storage_level[i+1] = ug_storage_level[i] + (el_hout[i] + res_hout[i] - LOAD[i] )*DT*3600  );
+constraint forall(  i in tint  )(   storage_htransfer[i] >= -LOAD[i]  );
+constraint forall(  i in tint  )(   storage_htransfer[i] <= el_hout[i]  );
+
+
 constraint forall(  i in tint  )(   ug_storage_level[i+1] = ug_storage_level[i] + storage_htransfer[i]*DT*3600  );
 constraint forall(  i in tint  )(   storage_hout[i] = LOAD[i] - res_hout[i]  );
 
