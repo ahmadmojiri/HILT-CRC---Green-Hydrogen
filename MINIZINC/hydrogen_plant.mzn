@@ -44,7 +44,7 @@ array[tint] of var float: el_pin;    %power flow into the electrolyser (kW)
 array[tint] of var float: bat_pin;      %power flow into the battery (kW)
 array[tint] of var float: bat_pout;     %power flow out of the battery (kW)
 array[tint] of var float: storage_htransfer; %hydrogen transfer from pipeline to underground storage
-
+array[tint] of var float: storage_hout;  %hydrogen flow from the storage to the load (kg of H2/s)
 array[tsamp] of var float: ug_storage_level;   %stored hydrogen level in underground storage (kg)
 array[tsamp] of var float: pipe_storage_level;   %stored hydrogen level in pieplie (kg)
 array[tsamp] of var float: res_h_level;    %reserved hydrogen for load shut down (kg)
@@ -91,10 +91,16 @@ constraint forall(  i in tsamp  )(  bat_e[i] - bat_e_capa <= 0 );
 
 constraint forall(  i in tsamp  )(  ug_storage_level[i] >= 0  );
 constraint forall(  i in tsamp  )(  ug_storage_level[i] - ug_storage_capa <= 0  );
+
+constraint forall(  i in tsamp  )(  pipe_storage_level[i] >= 0  );
+constraint forall(  i in tsamp  )(  pipe_storage_level[i] - pipe_storage_capa <= 0  );
+
 constraint forall(  i in tint  )(   el_hout[i] = el_pin[i]/3600* EL_ETA/ 39.4 );  %% high calorific value of H2 = 39.4 kWh/kg
 %constraint forall(  i in tint  )(   ug_storage_level[i+1] = ug_storage_level[i] + (el_hout[i] + res_hout[i] - LOAD[i] )*DT*3600  );
 constraint forall(  i in tint  )(   ug_storage_level[i+1] = ug_storage_level[i] + storage_htransfer[i]*DT*3600  );
-constraint forall(  i in tint  )(   pipe_storage_level[i+1] = pipe_storage_level[i] + (el_hout[i] + res_hout[i]- LOAD[i] - storage_htransfer[i]) *DT*3600  );
+constraint forall(  i in tint  )(   storage_hout[i] = LOAD[i] - res_hout[i]  );
+
+constraint forall(  i in tint  )(   pipe_storage_level[i+1] = pipe_storage_level[i] + (el_hout[i] - storage_hout[i] - storage_htransfer[i]) *DT*3600  );
 
 constraint forall(  i in tsamp  )(  res_h_level[i] >= 0  );
 constraint forall(  i in tsamp  )(  res_h_level[i] <= RES_H_CAPA  );
@@ -107,11 +113,13 @@ constraint forall(  i in tint  )(  res_hout[i]<=LOAD[i]  );
 solve minimize capex;
 
 output  ["!"] ++
+        ["N="] ++ [show(N)] ++ [";"] ++
         ["CAPEX="] ++ [show(capex)] ++ [";"] ++
         ["pv_max="] ++ [show(pv_max)] ++ [";"] ++
         ["wind_max="] ++ [show(wind_max)] ++ [";"] ++
         ["el_max="] ++ [show(el_max)] ++ [";"] ++
-        ["storage_h_max="] ++ [show(ug_storage_capa)] ++ [";"]++
+        ["ug_storage_capa="] ++ [show(ug_storage_capa)] ++ [";"]++
+        ["pipe_storage_capa="] ++ [show(pipe_storage_capa)] ++ [";"]++
         ["bat_e_capa="] ++ [show(bat_e_capa)] ++ [";"]++
         ["bat_p_max="] ++ [show(bat_p_max)] ++ [";"]++
         ["pv_pout="] ++ [show(pv_pout)] ++ [";"]++
@@ -122,7 +130,10 @@ output  ["!"] ++
         ["el_pin="] ++ [show(el_pin)] ++ [";"] ++
         ["el_hout="] ++ [show(el_hout)] ++ [";"] ++
         ["res_hout="] ++ [show(res_hout)] ++ [";"] ++
+        ["storage_hout="] ++ [show(storage_hout)] ++ [";"] ++
+        ["storage_htransfer="] ++ [show(storage_htransfer)] ++ [";"] ++
         ["ug_storage_level="] ++ [show(ug_storage_level)] ++ [";"] ++
+        ["pipe_storage_level="] ++ [show(pipe_storage_level)] ++ [";"] ++
         ["reserve_h_level="] ++ [show(res_h_level)] ++ [";"] ++
         ["bat_e="] ++ [show(bat_e)] ++ [";"] ++
         ["LOAD="] ++ [show(LOAD)] ++ [";"] ++

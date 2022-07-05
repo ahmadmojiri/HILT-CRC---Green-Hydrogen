@@ -9,8 +9,10 @@ import numpy as np
 # import pdb
 
 def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
-                  C_PV, C_WIND, C_EL, C_HSTORAGE, C_BAT_ENERGY, C_BAT_POWER, CF,
-                  PV_REF, PV_REF_POUT, WIND_REF, WIND_REF_POUT, LOAD):
+                  C_PV, C_WIND, C_EL, C_UG_STORAGE,UG_STORAGE_CAPA_MAX,
+                  C_PIPE_STORAGE,PIPE_STORAGE_CAPA_MIN, C_BAT_ENERGY,
+                  C_BAT_POWER, CF, PV_REF, PV_REF_POUT, WIND_REF,
+                  WIND_REF_POUT, LOAD):
 
     # pdb.set_trace()    
     string = """
@@ -25,19 +27,23 @@ def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
     C_PV = %.2f;    %% unit cost of PV ($/kW)
     C_WIND =  %.2f;    %% unit cost of Wind farm ($/kW)
     C_EL =  %.2f;    %% unit cost of electrolyser ($/kW)
-    C_HSTORAGE = %.2f;    %% unit cost of hydrogen storage ($/kgH)
+    C_UG_STORAGE = %.2f;    %% unit cost of hydrogen storage ($/kgH)
+    UG_STORAGE_CAPA_MAX = %.2f; %%maximum size of underground storage $/(kg of H2)
+    C_PIPE_STORAGE = %.2f; %% unit cost of storage with line packing $/(kg of H2)
+    PIPE_STORAGE_CAPA_MIN = %.2f; %% minimum size of line packing (kg of H2)
+    
     C_BAT_ENERGY = %.2f;   %% unit cost of electrochemical battery energy ($/kWh)
     C_BAT_POWER = %.2f;   %% unit cost of electrochemical battery power ($/kWh)
     
-    RES_H = %.2f;       %% reserved hydrogen for lowered capcaity factor
+    RES_H_CAPA = %.2f;       %% reserved hydrogen for lowered capcaity factor
     
-    PV_REF = %.2f;       %%the capacity of the reference PV plant (W)
+    PV_REF = %.2f;       %%the capacity of the reference PV plant (kW)
     
     %% Power output time series from reference PV plant (W)
     PV_REF_POUT = %s;                                  
      
      
-    WIND_REF = %.2f;  %% the capacity of the refernce wind plant (W)
+    WIND_REF = %.2f;  %% the capacity of the refernce wind plant (kW)
     
     %% power output time series from the reference wind plant (W)
     WIND_REF_POUT = %s;  
@@ -45,8 +51,9 @@ def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
     %% load timeseries (kgH/s)                             
     LOAD = %s;                              
     """ %(len(LOAD), DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
-      C_PV, C_WIND, C_EL, C_HSTORAGE, C_BAT_ENERGY, C_BAT_POWER, 
-      (1-CF)*sum(LOAD)*DT*3600, PV_REF, str(PV_REF_POUT), WIND_REF,
+      C_PV, C_WIND, C_EL, C_UG_STORAGE, UG_STORAGE_CAPA_MAX, C_PIPE_STORAGE,
+      PIPE_STORAGE_CAPA_MIN, C_BAT_ENERGY,
+      C_BAT_POWER,(1-CF)*sum(LOAD)*DT*3600, PV_REF, str(PV_REF_POUT), WIND_REF,
       str(WIND_REF_POUT), str(LOAD))
 
     with open(optdir + "hydrogen_plant_data.dzn", "w") as text_file:
