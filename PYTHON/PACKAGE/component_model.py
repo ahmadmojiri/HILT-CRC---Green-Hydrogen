@@ -231,7 +231,7 @@ def SolarResource_solcast():
 
     """
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\WEATHER_DATA'
-    data = pd.read_csv(path + "\weather_data_solcast.csv")
+    data = pd.read_csv(path + "\weather_data.csv")
     
     data_text = data.to_csv(index=False, line_terminator='\n')
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\SOLAR'
@@ -253,10 +253,10 @@ def WindSource_solcast():
     
     """
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\WEATHER_DATA'
-    data = pd.read_csv(path + "\weather_data_solcast.csv", skiprows=0)
+    data = pd.read_csv(path + "\weather_data.csv", skiprows=0)
     Lat = data.lat[0]
     Lon = data.lon[0]
-    data = pd.read_csv(path + "\weather_data_solcast.csv", skiprows=2)
+    data = pd.read_csv(path + "\weather_data.csv", skiprows=2)
     
     data_10 = data.iloc[:,[5,14,15,16]].copy()
     data_10.Pressure=data_10.Pressure/1013.25
