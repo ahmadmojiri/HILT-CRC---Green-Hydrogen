@@ -219,7 +219,7 @@ def solcast_weather(location):
     print('Weather data was downloaded from Solcast database!')
 
  #################################################################
-def SolarResource_solcast():
+def SolarResource_solcast(WD_file):
     """
     Parameters
     ----------
@@ -231,7 +231,7 @@ def SolarResource_solcast():
 
     """
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\WEATHER_DATA'
-    data = pd.read_csv(path + "\weather_data.csv")
+    data = pd.read_csv(path + "\%s"%(WD_file))
     
     data_text = data.to_csv(index=False, line_terminator='\n')
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\SOLAR'
@@ -242,7 +242,7 @@ def SolarResource_solcast():
     print('Solar data file was generated from Solcast database!')
 
  #################################################################
-def WindSource_solcast():
+def WindSource_solcast(WD_file):
     """
     Generates the wind source data for SAM based on the weather data 
     that is stored in WEATHER folder
@@ -253,10 +253,10 @@ def WindSource_solcast():
     
     """
     path = r'C:\Nextcloud\HILT-CRC---Green-Hydrogen\DATA\SAM INPUTS\WEATHER_DATA'
-    data = pd.read_csv(path + "\weather_data.csv", skiprows=0)
+    data = pd.read_csv(path + "\%s"%(WD_file), skiprows=0)
     Lat = data.lat[0]
     Lon = data.lon[0]
-    data = pd.read_csv(path + "\weather_data.csv", skiprows=2)
+    data = pd.read_csv(path + "\%s"%(WD_file), skiprows=2)
     
     data_10 = data.iloc[:,[5,14,15,16]].copy()
     data_10.Pressure=data_10.Pressure/1013.25
