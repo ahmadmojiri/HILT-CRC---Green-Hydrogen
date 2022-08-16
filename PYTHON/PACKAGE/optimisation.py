@@ -6,7 +6,8 @@ Created on Tue Mar 29 10:28:44 2022
 """
 from projdirs import optdir
 import numpy as np
-# import pdb
+from PACKAGE.component_model import pv_gen, wind_gen
+import os
 
 def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
                   C_PV, C_WIND, C_EL, C_UG_STORAGE,UG_STORAGE_CAPA_MAX,
@@ -53,15 +54,15 @@ def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
     """ %(len(LOAD), DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
       C_PV, C_WIND, C_EL, C_UG_STORAGE, UG_STORAGE_CAPA_MAX, C_PIPE_STORAGE,
       PIPE_STORAGE_CAPA_MIN, C_BAT_ENERGY,
-      C_BAT_POWER,(1-CF)*sum(LOAD)*DT*3600, PV_REF, str(PV_REF_POUT), WIND_REF,
+      C_BAT_POWER,(1-CF/100)*sum(LOAD)*DT*3600, PV_REF, str(PV_REF_POUT), WIND_REF,
       str(WIND_REF_POUT), str(LOAD))
 
-    with open(optdir + "hydrogen_plant_data.dzn", "w") as text_file:
+    with open(optdir + "hydrogen_plant_data_%s.dzn"%(str(CF)), "w") as text_file:
         text_file.write(string)
         
         
 #####################################################################
-def optimise(simparams):
+def Minizinc(simparams):
     """
     Parameters
     ----------
@@ -77,11 +78,13 @@ def optimise(simparams):
     """
     make_dzn_file(**simparams)
     mzdir = r'C:\\Program Files\\MiniZinc\\'
+    minizinc_data_file_name = "hydrogen_plant_data_%s.dzn"%(str(simparams['CF']))
+    
     from subprocess import check_output
     output = str(check_output([mzdir + 'minizinc', "--soln-sep", '""',
                                "--search-complete-msg", '""', "--solver",
                                "COIN-BC", optdir + "hydrogen_plant.mzn",
-                               optdir + "hydrogen_plant_data.dzn"]))
+                               optdir + minizinc_data_file_name]))
     
     output = output.replace('[','').replace(']','').split('!')
     for string in output:
@@ -94,8 +97,79 @@ def optimise(simparams):
     for x in results:
         RESULTS[x.split('=')[0]]=np.array((x.split('=')[1]).split(',')).astype(float)        
     
+    #remove the minizinc data file after running the minizinc model
+    
+    mzfile = optdir + minizinc_data_file_name
+    if os.path.exists(mzfile):
+        os.remove(mzfile)
+    
+    
     return(  RESULTS  )
 
+######################################################################
+def Optimise(load, cf, storage_type, simparams):
+    pv_ref = 1e3 #(kW)
+    pv_ref_pout = list(np.trunc(100*np.array(pv_gen(pv_ref)))/100)
+    
+    wind_ref = 320e3 #(kW)
+    wind_ref_pout = list(np.trunc(100*np.array(wind_gen()))/100)
+    
+    initial_ug_capa = 110
+    
+    simparams.update(DT = 1,#[s] time steps
+                     PV_REF = pv_ref, #capacity of reference PV plant (kW)
+                     PV_REF_POUT = pv_ref_pout, #power output from reference PV plant (kW)
+                     WIND_REF = wind_ref, #capacity of reference wind farm (kW)
+                     WIND_REF_POUT = wind_ref_pout, #power output from the reference wind farm (kW)
+                     C_UG_STORAGE = Cost_hs(initial_ug_capa, storage_type),
+                     LOAD = [load for i in range(len(pv_ref_pout))], #[kgH2/s] load profile timeseries
+                     CF = cf           #capacity factor
+                     )
+ 
+    
+    print('Calculating for CF=', simparams['CF'])
+    results = Minizinc(simparams)
+    
+    new_ug_capa = results['ug_storage_capa'][0]/1e3
+    if np.mean([new_ug_capa,initial_ug_capa]) > 0:
+        if abs(new_ug_capa - initial_ug_capa)/np.mean([new_ug_capa,initial_ug_capa]) > 0.05:
+            initial_ug_capa = new_ug_capa
+            print('Refining storage cost; new storage capa=', initial_ug_capa)
+            simparams['C_UG_STORAGE'] = Cost_hs(initial_ug_capa, storage_type)
+            results = Minizinc(simparams)
+    
+    results.update(CF=simparams['CF'],
+                   C_UG_STORAGE=simparams['C_UG_STORAGE'])
+    return(results)
 
 ######################################################################
 
+def Cost_hs(size,storage_type):
+    """
+    This function calculates the unit cost of storage as a function of size
+    
+    Parameters
+    ----------
+    size: storage capacity in kg of H2
+    storage_type: underground storage type; 
+                one of ['Lined Rock', 'Salt Cavern']
+
+    Returns unit cost of storage in USD/kg of H2
+        
+    """
+    if size > 0:
+        x = np.log10(size)
+        if size > 100:
+            if storage_type == 'Salt Cavern':
+                cost=10 ** (0.212669*x**2 - 1.638654*x + 4.403100)
+                if size > 8000:
+                    cost = 17.66
+            elif storage_type == 'Lined Rock':
+                cost =10 ** (   0.217956*x**2 - 1.575209*x + 4.463930  )
+                if size > 4000:
+                    cost = 41.48
+        else:
+            cost = 10 ** (-0.0285*x + 2.7853)
+    else:
+        cost = 516
+    return(cost)
