@@ -8,6 +8,7 @@ from projdirs import optdir
 import numpy as np
 from PACKAGE.component_model import pv_gen, wind_gen
 import os
+import shutil
 
 def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
                   C_PV, C_WIND, C_EL, C_UG_STORAGE,UG_STORAGE_CAPA_MAX,
@@ -56,12 +57,11 @@ def make_dzn_file(DT, EL_ETA, BAT_ETA_in, BAT_ETA_out,
       PIPE_STORAGE_CAPA_MIN, C_BAT_ENERGY,
       C_BAT_POWER,(1-CF/100)*sum(LOAD)*DT*3600, PV_REF, str(PV_REF_POUT), WIND_REF,
       str(WIND_REF_POUT), str(LOAD))
-
+    
     with open(optdir + "hydrogen_plant_data_%s.dzn"%(str(CF)), "w") as text_file:
         text_file.write(string)
         
         
-#####################################################################
 def Minizinc(simparams):
     """
     Parameters
@@ -77,11 +77,16 @@ def Minizinc(simparams):
 
     """
     make_dzn_file(**simparams)
-    mzdir = r'C:\\Program Files\\MiniZinc\\'
-    minizinc_data_file_name = "hydrogen_plant_data_%s.dzn"%(str(simparams['CF']))
     
+    #mzdir = parent_directory + os.sep + 'MiniZinc'
+    # I commented out the mzdir command because it is annoyying to refer to the installation dir
+    # in different systems. I think a better way is that we add minizinc to an environment variable 
+    #during the installation
+    
+    minizinc_data_file_name = "hydrogen_plant_data_%s.dzn"%(str(simparams['CF']))
     from subprocess import check_output
-    output = str(check_output([mzdir + 'minizinc', "--soln-sep", '""',
+    output = str(check_output([#mzdir + 
+                               'minizinc', "--soln-sep", '""',
                                "--search-complete-msg", '""', "--solver",
                                "COIN-BC", optdir + "hydrogen_plant.mzn",
                                optdir + minizinc_data_file_name]))
@@ -106,7 +111,6 @@ def Minizinc(simparams):
     
     return(  RESULTS  )
 
-######################################################################
 def Optimise(load, cf, storage_type, simparams):
     pv_ref = 1e3 #(kW)
     pv_ref_pout = list(np.trunc(100*np.array(pv_gen(pv_ref)))/100)
@@ -142,8 +146,6 @@ def Optimise(load, cf, storage_type, simparams):
     results.update(CF=simparams['CF'],
                    C_UG_STORAGE=simparams['C_UG_STORAGE'])
     return(results)
-
-######################################################################
 
 def Cost_hs(size,storage_type):
     """
